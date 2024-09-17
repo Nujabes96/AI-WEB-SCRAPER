@@ -1,20 +1,21 @@
-import selenium.webdriver as webdriver
-from selenium.webdriver.edge.service import Service
-import time
+from selenium.webdriver import Remote, ChromeOptions
+from selenium.webdriver.chromium.remote_connection import ChromiumRemoteConnection
 
-def steal(website):
+SBR_WEBDRIVER = 'https://brd-customer-hl_f70c5bbe-zone-ai_scraper:9ykzj36fa894@brd.superproxy.io:9515'
+
+def scrape(website):
     print("Launching browser...")
 
-    browser_path = ('msedgedriver.exe')
-    service = Service(browser_path)
-    options = webdriver.EdgeOptions()
-    driver = webdriver.Edge(service=service, options=options)
-    
-    try:
+    sbr_connection = ChromiumRemoteConnection(SBR_WEBDRIVER, 'goog', 'chrome')
+    with Remote(sbr_connection, options=ChromeOptions()) as driver:
         driver.get(website)
+        # CAPTCHA handling: If you're expecting a CAPTCHA on the target page, use the following code snippet to check the status of Scraping Browser's automatic CAPTCHA solver
+        print('Waiting captcha to solve...')
+        solve_res = driver.execute('executeCdpCommand', {
+            'cmd': 'Captcha.waitForSolve',
+            'params': {'detectTimeout': 10000},
+        })
+        print('Captcha solve status:', solve_res['value']['status'])
+        print('Navigated! Scraping page content...')
         html = driver.page_source
-        print("Page loaded...")
-        time.sleep(10)
         return html
-    finally:
-        driver.quit()
