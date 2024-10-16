@@ -1,4 +1,5 @@
 streamlit 
+webdriver-manager
 langchain 
 langchain_ollama
 selenium
