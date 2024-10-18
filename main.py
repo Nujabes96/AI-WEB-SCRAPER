@@ -24,7 +24,11 @@ if st.button("Scrape Website") and url:
 
             with st.expander("Preview"):
                 st.text_area("DOM Content", clean_body, height=300)
-
+            st.subheader("🐱‍💻 Steps for AI analysis")
+            st.write("1. Donwload the zip file below and extract the files\n 3. Provide each chunk-file to a LLM such as ChatGPT or Claude\n 4. Write a prompt according to your needs. Here's an example you can use:")
+            st.code("""You will receive multiple CSV chunks. Please process each chunk to extract relevant insights. The data may include:
+- **Columns**: page_title, h1, h2, h3, h4, h5, h6, a, navigation_menus, reviews, tables, images, meta, links, paragraphs, articles, quotes and spans.
+Determine the title of all the news on the website and combine it with the upcoming chunks to create a cohesive list. Here's the first chunk. Let me know when you're ready for the next chunk.""","markdown")
             if st.session_state.scraped_data:
                 # Prepare chunks but do not save them yet
                 chunks, safe_title = csv_converter(st.session_state.scraped_data)

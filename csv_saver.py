@@ -5,6 +5,30 @@ import zipfile
 from bs4 import BeautifulSoup
 import io
 
+def clean_chunk(df, current_chunk):
+    chunk_df = pd.DataFrame(current_chunk, columns=df.columns)
+    
+    # Store h1 and page_title columns
+    preserved_columns = {
+        'page_title': chunk_df['page_title'].copy()
+    }
+    
+    # Drop columns based on threshold, excluding h1 and page_title
+    other_columns = [col for col in chunk_df.columns if col not in preserved_columns]
+    temp_df = chunk_df[other_columns]
+    threshold = 0.9 * len(temp_df.columns)
+    temp_df.dropna(thresh=threshold, axis=1, inplace=True)
+    
+    # Restore preserved columns
+    for col, values in preserved_columns.items():
+        temp_df[col] = values
+    
+    # Convert all columns to string and replace empty values
+    temp_df = temp_df.astype(str)
+    temp_df.replace(['', 'nan'], 'No data', inplace=True)
+    
+    return temp_df
+
 # Function to split DataFrame into smaller chunks
 def split_dataframe_into_chunks(df, max_tokens=3500):
     chunks = []
@@ -18,16 +42,18 @@ def split_dataframe_into_chunks(df, max_tokens=3500):
     
     for idx, row in df.iterrows():
         row_token_count = estimate_token_count(row)
-        if current_chunk_token_count + row_token_count > max_tokens:
-            chunks.append(pd.DataFrame(current_chunk, columns=df.columns))
+        if current_chunk_token_count + row_token_count > max_tokens and current_chunk:
+            chunk_df = clean_chunk(df, current_chunk)
+            chunks.append(chunk_df)
             current_chunk = []
             current_chunk_token_count = 0
         current_chunk.append(row)
         current_chunk_token_count += row_token_count
-    
+        
     if current_chunk:
-        chunks.append(pd.DataFrame(current_chunk, columns=df.columns))
-    
+        chunk_df = clean_chunk(df, current_chunk)
+        chunks.append(chunk_df)
+        
     return chunks
 
 def csv_converter(html):
@@ -43,7 +69,7 @@ def csv_converter(html):
         "page_title": [title],
         'h1': [], 'h2': [], 'h3': [], 'h4': [], 'h5': [], 'h6': [],
         "a": [], "navigation_menus": [], "reviews": [], "tables": [],
-        "images": [], "links": [], "meta": [],
+        "images": [], "links": [],
         "paragraphs": [], "articles": [], "quotes": [], "spans": []
     }
 
@@ -63,16 +89,13 @@ def csv_converter(html):
         data["a"] = [a.get_text(strip=True) for a in body_content.find_all('a')]
         data["spans"] = [span.get_text(strip=True) for span in body_content.find_all('span')]
         
+        
     # Pad all lists to the same length with NaN
     max_length = max(len(v) for v in data.values())
     data = {k: v + [np.nan] * (max_length - len(v)) for k, v in data.items()}
 
     # Create DataFrame
     df = pd.DataFrame(data)
-
-    threshold = 0.9 * len(df)
-    df.dropna(thresh=threshold, axis=1)
-    df.fillna('No data', inplace=True)
 
     # Split DataFrame into chunks
     chunks = split_dataframe_into_chunks(df)
